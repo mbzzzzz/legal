@@ -19,20 +19,29 @@ export async function POST(req: NextRequest) {
         // 1. Extract Text
         const text = await extractText(buffer, fileExtension);
 
-        // 2. Vector Store (Optional but requested)
-        // In a real app, you might want to chunk and store for future multi-doc queries
-        const doc = new Document({
-            pageContent: text,
+        // 2. Vector Store (Split text into chunks for RAG)
+        const { splitText } = require("@/lib/parsers"); // ensure splitText is imported via require or standard import
+        let chunks: string[] = [];
+        try {
+            const parsers = require("@/lib/parsers");
+            chunks = parsers.splitText ? parsers.splitText(text) : [text];
+        } catch (e) { /* fallback */ chunks = [text]; }
+
+        const docs = chunks.map((chunk: string, i: number) => new Document({
+            pageContent: chunk,
             metadata: {
                 fileName: file.name,
+                chunkIndex: i,
                 uploadedAt: new Date().toISOString()
             },
-        });
+        }));
 
         // Attempting to add to vector store if Supabase is configured
         try {
             if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-                await vectorStore.addDocuments([doc]);
+                // Delete existing vectors for this file to avoid duplicates on re-upload
+                // (Optional, just inserting for now)
+                await vectorStore.addDocuments(docs);
             }
         } catch (ve) {
             console.warn("Vector store update failed (likely missing config):", ve);

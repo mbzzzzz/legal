@@ -9,6 +9,12 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
     let file: File | undefined;
 
@@ -46,6 +52,32 @@ export default function Home() {
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   }
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !fileName) return;
+
+    const newMessages = [...chatMessages, { role: "user", content: chatInput.trim() }];
+    setChatMessages(newMessages);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages, fileName }),
+      });
+      const data = await res.json();
+      if (data.response) {
+        setChatMessages((prev: any) => [...prev, { role: "assistant", content: data.response }]);
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-x-hidden noise-bg bg-mesh selection:bg-primary/20">
@@ -313,6 +345,95 @@ export default function Home() {
           </p>
         </div>
       </footer>
+
+      {/* Floating Chat UI */}
+      {analysisResult && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+          <AnimatePresence>
+            {isChatOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="glass-card w-80 md:w-96 rounded-2xl mb-4 overflow-hidden flex flex-col glow-border shadow-2xl"
+                style={{ height: '450px' }}
+              >
+                {/* Chat Header */}
+                <div className="bg-black/40 px-4 py-3 border-b border-white/10 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#00d4ff] text-xl">forum</span>
+                    <h3 className="text-white text-sm font-bold tracking-tight">Talk to Contract</h3>
+                  </div>
+                  <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                      <span className="material-symbols-outlined text-4xl mb-2 text-[#833cf6]">description</span>
+                      <p className="text-xs text-slate-300">Ask questions about this specific document.</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => (
+                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-xl px-4 py-2 text-sm leading-relaxed ${msg.role === 'user'
+                            ? 'bg-[#833cf6] text-white rounded-br-none'
+                            : 'bg-white/10 text-slate-200 border border-white/5 rounded-bl-none'
+                          }`}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white/10 text-slate-200 border border-white/5 rounded-xl rounded-bl-none px-4 py-2 text-sm flex items-center gap-2">
+                        <span className="animate-spin material-symbols-outlined text-[#00d4ff] text-sm">cycle</span>
+                        <span className="opacity-75 text-xs">Thinking...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <div className="p-3 bg-black/40 border-t border-white/10">
+                  <form onSubmit={handleChatSubmit} className="relative">
+                    <input
+                      type="text"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-3 pr-10 text-white text-sm focus:outline-none focus:border-[#00d4ff]/50 transition-colors placeholder-slate-500"
+                      placeholder="Ask a question..."
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      disabled={isChatLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isChatLoading || !chatInput.trim()}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[#00d4ff] hover:text-white disabled:opacity-50 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">send</span>
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Toggle Button */}
+          {!isChatOpen && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="bg-[#833cf6] hover:bg-[#833cf6]/80 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#833cf6]/20 transition-all hover:scale-105 border border-white/10"
+            >
+              <span className="material-symbols-outlined text-2xl">chat</span>
+            </button>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
