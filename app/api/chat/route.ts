@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
         }
 
         // Construct System Prompt for Claude
-        const systemPrompt = `You are a world-class legal assistant answering questions about a specific document.
-Focus strictly on the provided context. Give short, precise, and highly structured answers. Do NOT use markdown bolding (**) or asterisks or complex styling. Use simple text styling, indentation, or newlines to structure answers. Do not output anything if the answer is not in the context.
+        const systemPrompt = `You are a world-class legal advisor answering legal questions about a specific document provided by your client.
+Focus strictly on the provided context. Give short, precise, and highly structured answers that provide professional legal guidance. Do NOT use markdown bolding (**) or asterisks or complex styling. Use simple text styling, indentation, or newlines to structure answers. Do not output anything if the answer is not in the context.
 
 DOCUMENT CONTEXT:
-${contextText || "[No document context retrieved. The vector store might not be configured.]"}`;
+${contextText || "[No document context retrieved. The vector store might not be configured or the file was not fully indexed.]"}`;
 
         const chatResponse = await model.invoke([
             new SystemMessage(systemPrompt),
