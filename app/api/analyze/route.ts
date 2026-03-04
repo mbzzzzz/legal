@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractText } from "@/lib/parsers";
+import { extractText, splitText } from "@/lib/parsers";
 import { analyzeLegalDocument } from "@/lib/analysis";
 import { vectorStore } from "@/lib/ai"; // Supabase Vector store
 import { Document } from "@langchain/core/documents";
@@ -20,12 +20,13 @@ export async function POST(req: NextRequest) {
         const text = await extractText(buffer, fileExtension);
 
         // 2. Vector Store (Split text into chunks for RAG)
-        const { splitText } = require("@/lib/parsers"); // ensure splitText is imported via require or standard import
         let chunks: string[] = [];
         try {
-            const parsers = require("@/lib/parsers");
-            chunks = parsers.splitText ? parsers.splitText(text) : [text];
-        } catch (e) { /* fallback */ chunks = [text]; }
+            chunks = splitText ? splitText(text) : [text];
+        } catch (e) {
+            console.error("Chunking failed:", e);
+            chunks = [text];
+        }
 
         const docs = chunks.map((chunk: string, i: number) => new Document({
             pageContent: chunk,
