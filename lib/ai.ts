@@ -15,6 +15,11 @@ export const model = new ChatAnthropic({
   temperature: 0.2, // Lower temperature for more consistent legal analysis
 });
 
+// Set local cache to /tmp for Vercel serverless compatibility
+if (typeof process !== "undefined" && process.env) {
+  process.env.TRANSFORMERS_CACHE = '/tmp';
+}
+
 // Free, local embeddings using Transformers.js (all-MiniLM-L6-v2)
 export const embeddings = new HuggingFaceTransformersEmbeddings({
   model: "Xenova/all-MiniLM-L6-v2",
