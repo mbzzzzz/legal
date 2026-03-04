@@ -22,7 +22,8 @@ create index on documents using ivfflat (embedding vector_cosine_ops)
 create or replace function match_documents (
   query_embedding vector(384),
   match_threshold float,
-  match_count int
+  match_count int,
+  filter jsonb default '{}'
 )
 returns table (
   id bigint,
@@ -41,6 +42,7 @@ begin
     1 - (documents.embedding <=> query_embedding) as similarity
   from documents
   where 1 - (documents.embedding <=> query_embedding) > match_threshold
+    and documents.metadata @> filter
   order by similarity desc
   limit match_count;
 end;
